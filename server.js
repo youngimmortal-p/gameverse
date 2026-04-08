@@ -5,9 +5,8 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 // 🔗 CONNECT TO MONGODB ATLAS
-mongoose.connect("mongodb+srv://odup25_db_user:pB8Xpg9kjfCrFe1R@chillfest.prbesfa.mongodb.net/?appName=Chillfest")
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.log(err));
 
@@ -18,6 +17,10 @@ const Ticket = mongoose.model("Ticket", {
   ticketId: String,
   used: { type: Boolean, default: false }
 });
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => console.log("Server running"));
 
 // 🎟 CREATE TICKET
 app.post("/create-ticket", async (req, res) => {
