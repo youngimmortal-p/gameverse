@@ -1,9 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-
-const app = express();
 app.use(cors());
+const app = express();
 app.use(express.json());
 // 🔗 CONNECT TO MONGODB ATLAS
 mongoose.connect(process.env.MONGO_URI)
