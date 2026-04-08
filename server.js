@@ -1,56 +1,97 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-app.use(cors());
+
 const app = express();
+
+// Middleware (MUST come before routes)
+app.use(cors({
+  origin: "https://gameverse-1.netlify.app",
+  credentials: true
+}));
 app.use(express.json());
+
 // 🔗 CONNECT TO MONGODB ATLAS
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("✅ MongoDB Connected"))
-.catch(err => console.log(err));
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => {
+    console.error("❌ MongoDB Connection Error:", err);
+    process.exit(1); // Exit if DB fails
+  });
 
 // 📦 MODEL
 const Ticket = mongoose.model("Ticket", {
-  name: String,
-  email: String,
-  ticketId: String,
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  ticketId: { type: String, required: true, unique: true },
   used: { type: Boolean, default: false }
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => console.log("Server running"));
-
 // 🎟 CREATE TICKET
 app.post("/create-ticket", async (req, res) => {
-  const { name, email } = req.body;
+  try {
+    const { name, email } = req.body;
 
-  const ticketId = "GAME-" + Date.now();
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and email required" });
+    }
 
-  const ticket = await Ticket.create({
-    name,
-    email,
-    ticketId
-  });
+    const ticketId = "GAME-" + Date.now();
 
-  res.json(ticket);
+    const ticket = await Ticket.create({
+      name,
+      email,
+      ticketId
+    });
+
+    res.json({ 
+      success: true, 
+      ticket: ticketId,
+      data: ticket 
+    });
+  } catch (error) {
+    console.error("Create ticket error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // ✅ VALIDATE TICKET
 app.post("/validate-ticket", async (req, res) => {
-  const { ticketId } = req.body;
+  try {
+    const { ticketId } = req.body;
 
-  const ticket = await Ticket.findOne({ ticketId });
+    if (!ticketId) {
+      return res.status(400).json({ error: "Ticket ID required" });
+    }
 
-  if (!ticket) return res.json({ status: "invalid" });
+    const ticket = await Ticket.findOne({ ticketId });
 
-  if (ticket.used) return res.json({ status: "used" });
+    if (!ticket) {
+      return res.json({ status: "invalid" });
+    }
 
-  ticket.used = true;
-  await ticket.save();
+    if (ticket.used) {
+      return res.json({ status: "used" });
+    }
 
-  res.json({ status: "valid", name: ticket.name });
+    ticket.used = true;
+    await ticket.save();
+
+    res.json({ status: "valid", name: ticket.name });
+  } catch (error) {
+    console.error("Validate ticket error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// 🩺 HEALTH CHECK (important for Render)
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
 // 🚀 START SERVER
-app.listen(3000, () => console.log("🚀 Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
